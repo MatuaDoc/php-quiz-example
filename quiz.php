@@ -104,9 +104,7 @@ function createResultsHTML($score, $numberAsked)
 </head>
 
 <body>
-    <h1>Hello, world!</h1>
     <?php loadQuiz(); ?>
-    <h1>Bye, world!</h1>
 </body>
 
 </html>
