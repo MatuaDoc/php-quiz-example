@@ -73,7 +73,7 @@ function loadQuestions()
     function checkAnswer(answer) {
         score = score + (answer == currentQuestion.answer ? 1 : 0);
         index = index + 1;
-        updateQuestionHTML()
+        updateQuestionHTML();
     }
     </script>
 </head>
