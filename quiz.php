@@ -1,97 +1,23 @@
 <?php
 
-function loadQuiz()
+function loadQuestions()
 {
     /**
-     * Loads the quiz. If one is in progress, it continues that quiz.
-     * Otherwise, it loads a new one.
+     * Loads the quiz questions.
      */
 
     // Loading in questions from a PHP dictionary.
     // FIXME: you should load the initial questions from MySQL instead.
     // Also, ideally you would load question IDs rather than whole questions.
     // After all, you can load the actual question and answer text later.
-    include('questions.php');
+    include("questions.php");
+    $questions = $allQuestions;
 
-    // Check if the 'asked' GET variable has been declared. If so,
-    // then a quiz is in progress and we should continue it.
-    // If not, then start a new quiz.
-    if (isset($_GET['asked'])) {
-        $numberAsked = $_GET['asked'];
-        $score = $_GET['score'];
+    // FIXME: replace lines 13 & 14 with code to fetch from the database.
+    // You can adapt the code from sql_example.php to do this. It
+    // would go here, before the return statement.
 
-        // If this is the start of the quiz, load all questions. Otherwise, just the ones left.
-        // FIXME: this is inefficient as it loads ALL questions regardless. You should maintain
-        // your own array of question IDs to pull from the database one at a time.
-        $sessionQuestions = array_slice($allQuestions, $numberAsked);
-
-        loadNextQuestion($sessionQuestions, $numberAsked, $score);
-    } else {
-        // Start a new quiz.
-        $sessionQuestions = $allQuestions;
-        shuffle($sessionQuestions);
-        loadNextQuestion($sessionQuestions, 0, 0);
-    }
-}
-
-function loadNextQuestion($questions, $numberAsked, $score)
-{
-    /**
-     * Loads the next question into the web page.
-     */
-    switch (count($questions) == 0) {
-        case true:
-            createResultsHTML($score, $numberAsked);
-            break;
-        default:
-            foreach ($questions as $question) {
-                echo $question['question'] . ' • ';
-            }
-
-            createQuestionHTML($questions, $numberAsked, $score);
-            break;
-    }
-}
-
-function createQuestionHTML($sessionQuestions, $numberAsked, $score)
-{
-    /**
-     * Loads in information about the current question, its answers,
-     * and formats them nicely on the page.
-     */
-    $currentQuestion = $sessionQuestions[0];
-    $questionText = $currentQuestion["question"];
-    $answer = $currentQuestion["answer"];
-    $wrongAnswers = $currentQuestion["wrong_answers"];
-    $allAnswers = array_merge([$answer], $wrongAnswers);
-    shuffle($allAnswers);
-
-    // Put all the question/answer information into the text fields/DIVs
-    echo '<h1>Question #' . ($numberAsked + 1) . '</h1>';
-    echo '<h2>' . $questionText . '</h2>';
-    echo '<div id="answers">';
-
-    // for (index in range(0, len(allAnswers))):
-
-    foreach (range(0, count($allAnswers) - 1) as $index) {
-        $currentAnswer = $allAnswers[$index];
-
-        // Prepare a URL for each answer to load. If the answer is correct, also increase the score.
-        // FIXME: this solution uses GET rather than PUT, so the number of asked questions and the
-        // score is easily manipulatable from the browser's address bar.
-        $url = 'quiz.php?asked=' . ($numberAsked + 1);
-        $url = $url . '&score=' . ($score + ($currentAnswer == $answer ? 1 : 0));
-
-        echo '<div class="answer"><a href="' . $url . '">' . $allAnswers[$index] . '</a></div>';
-    }
-    echo '</div>';
-}
-
-function createResultsHTML($score, $numberAsked)
-{
-    echo '<h1>Results</h1>';
-    echo '<p>You scored ' . $score . ' out of ' . $numberAsked . '</p>';
-    echo '<div class="answer"><a href="quiz.php">Restart</a></div>';
+    return $questions;
 }
 
 ?>
@@ -101,10 +27,68 @@ function createResultsHTML($score, $numberAsked)
 <head>
     <title>Quiz</title>
     <link rel="stylesheet" href="style.css">
+    <script>
+    // Global variables
+    var sessionQuestions = [];
+    var currentQuestion = "";
+    var index = 0;
+    var score = 0;
+
+    // Helper function to shuffle array
+    function shuffle(array) {
+        array.sort(() => Math.random() - 0.5);
+    }
+
+    // Converts the question from PHP to JSON so that JS can use it
+    function loadQuiz() {
+        var questionsJSON = `<?php echo json_encode(loadQuestions()); ?>`;
+        sessionQuestions = JSON.parse(questionsJSON);
+        index = 0;
+        score = 0;
+        updateQuestionHTML();
+    }
+
+    // Display the questions
+    function updateQuestionHTML() {
+        if (index < sessionQuestions.length) {
+            currentQuestion = sessionQuestions[index];
+            var questionText = currentQuestion.question;
+            var answer = currentQuestion.answer;
+            var wrongAnswers = currentQuestion.wrong_answers;
+            var allAnswers = wrongAnswers.concat([answer]);
+
+            document.getElementById("question_number").innerHTML = "Question #" + (index + 1);
+            document.getElementById("question_text").innerHTML = questionText;
+
+            // Create links to call the JS function
+            for (i = 1; i <= 4; i++) {
+                var answerText = allAnswers[i - 1];
+                document.getElementById("answer" + i).innerHTML = '<a href="javascript:checkAnswer(\'' + answerText +
+                    '\');">' + answerText + '</a>';
+            }
+        } else {
+            alert("You scored " + score + "/" + sessionQuestions.length);
+        }
+    }
+
+    // Check the answer and load the next question
+    function checkAnswer(answer) {
+        score = score + (answer == currentQuestion.answer ? 1 : 0);
+        index = index + 1;
+        updateQuestionHTML();
+    }
+    </script>
 </head>
 
-<body>
-    <?php loadQuiz(); ?>
+<body onload="loadQuiz();">
+    <h1 id="question_number">Question #0</h1>
+    <h2 id="question_text">No question loaded</h2>
+    <div id="answers">
+        <div id="answer1" class="answer"><a href="javascript:checkAnswer(1);">Answer Text 1</a></div>
+        <div id="answer2" class="answer"><a href="javascript:checkAnswer(2);">Answer Text 2</a></div>
+        <div id="answer3" class="answer"><a href="javascript:checkAnswer(3);">Answer Text 3</a></div>
+        <div id="answer4" class="answer"><a href="javascript:checkAnswer(4);">Answer Text 4</a></div>
+    </div>
 </body>
 
 </html>
