@@ -10,12 +10,41 @@ function loadQuestions()
     // FIXME: you should load the initial questions from MySQL instead.
     // Also, ideally you would load question IDs rather than whole questions.
     // After all, you can load the actual question and answer text later.
-    include('questions.php');
+    $dbc = mysqli_connect("localhost", "root", "admin", "QuizDemo");
+    if ($error = mysqli_error($dbc)) {
+        print("Error: " + $error);
+        exit();
+    }
+    mysqli_set_charset($dbc, "utf8");
 
-    $sessionQuestions = $allQuestions; // Change this to fetch from MySQL
-    shuffle($sessionQuestions);
+    $idQuery = "SELECT Questions.QuestionID FROM Questions WHERE Questions.QuizID = 1 ORDER BY RAND() LIMIT 3";
+    $idResult = mysqli_query($dbc, $idQuery);
+    $questionIDs = mysqli_fetch_array($idResult, MYSQLI_NUM);
 
-    return $sessionQuestions;
+    print_r($questionIDs);
+
+    $questions = [];
+    foreach ($questionIDs as $questionID) {
+        $questionQuery = "SELECT Questions.QuestionText FROM Questions WHERE Questions.QuestionID = " . $questionID;
+        $questionResult = mysqli_query($dbc, $questionQuery);
+        $questionText = mysqli_fetch_assoc($questionResult)["QuestionText"];
+
+        $correctAnswerQuery = "SELECT Answers.AnswerText FROM Answers WHERE Answers.AnswerIsCorrect = 1, Answers.QuestionID = " . $questionID;
+        $correctAnswerResult = mysqli_query($dbc, $correctAnswerQuery);
+        $correctAnswerText = mysqli_fetch_assoc($correctAnswerResult)["AnswerText"];
+
+        $wrongAnswerQuery = "SELECT Answers.AnswerText FROM Answers WHERE Answers.AnswerIsCorrect = 0, Answers.QuestionID = " . $questionID;
+        $wrongAnswersResult = mysqli_query($dbc, $wrongAnswerQuery);
+        $wrongAnswers = mysqli_fetch_all($wrongAnswersResult, MYSQLI_NUM);
+
+        array_push($questions, [
+            "question" => $questionText,
+            "answer" => $correctAnswerText,
+            "wrong_answers" => $wrongAnswers
+        ]);
+    }
+
+    return $questions;
 }
 
 ?>
@@ -39,7 +68,7 @@ function loadQuestions()
 
     // Converts the question from PHP to JSON so that JS can use it
     function loadQuiz() {
-        var questionsJSON = '<?php echo json_encode(loadQuestions()); ?>';
+        var questionsJSON = `<?php echo json_encode(loadQuestions()); ?>`;
         sessionQuestions = JSON.parse(questionsJSON);
         index = 0;
         score = 0;
